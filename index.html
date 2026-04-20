@@ -297,7 +297,7 @@
         </select>
 
         <div class="file-input-wrapper">
-            <input type="file" id="file-input" accept=".obj,.glb,.gltf" onchange="handleFileUpload(event)">
+            <input type="file" id="file-input" accept=".obj,.glb,.gltf">
             <button class="file-btn" onclick="document.getElementById('file-input').click()">📁 Load Local File</button>
         </div>
     </div>
@@ -371,13 +371,22 @@
 
     <div class="error-toast" id="error-toast"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/MTLLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 
-    <script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+        import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
         let scene, camera, renderer, controls;
         let currentModel = null;
         let gridHelper = null;
@@ -385,15 +394,15 @@
         let wireframeMesh = null;
         let ambientLight, directionalLight, fillLight, backLight;
 
+        const objLoader = new OBJLoader();
+        const mtlLoader = new MTLLoader();
+        const gltfLoader = new GLTFLoader();
+
         const BUNDLED_MODELS = {
             'models/3dbus/BUS.obj': { mtl: 'models/3dbus/BUS.mtl', name: 'Generic Bus' },
             'models/publictransport/Bus.obj': { mtl: 'models/publictransport/Bus.mtl', name: 'LowPoly Bus' },
             'models/schoolbus/SchoolBus.obj': { mtl: 'models/schoolbus/SchoolBus.mtl', name: 'School Bus' }
         };
-
-        const objLoader = new THREE.OBJLoader();
-        const mtlLoader = new THREE.MTLLoader();
-        const gltfLoader = new THREE.GLTFLoader();
 
         function init() {
             const canvas = document.getElementById('viewport');
@@ -408,7 +417,6 @@
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.outputColorSpace = THREE.SRGBColorSpace;
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x1a1a2e);
@@ -421,7 +429,7 @@
             );
             camera.position.set(5, 3, 5);
 
-            controls = new THREE.OrbitControls(camera, canvas);
+            controls = new OrbitControls(camera, canvas);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.minDistance = 2;
@@ -443,6 +451,8 @@
                     loadBundledModel(e.target.value);
                 }
             });
+
+            document.getElementById('file-input').addEventListener('change', handleFileUpload);
 
             animate();
         }
@@ -616,8 +626,10 @@
             });
 
             const box = new THREE.Box3().setFromObject(model);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
+            const center = new THREE.Vector3();
+            const size = new THREE.Vector3();
+            box.getCenter(center);
+            box.getSize(size);
 
             const maxDim = Math.max(size.x, size.y, size.z);
             const scale = 3 / maxDim;
@@ -645,7 +657,8 @@
         function updateModelInfo(model) {
             let vertices = 0, faces = 0;
             const box = new THREE.Box3().setFromObject(model);
-            const size = box.getSize(new THREE.Vector3());
+            const size = new THREE.Vector3();
+            box.getSize(size);
 
             model.traverse((child) => {
                 if (child.isMesh && child.geometry) {
@@ -728,23 +741,23 @@
             controls.update();
         }
 
-        function toggleFullscreen() {
+        window.toggleFullscreen = function() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen();
             } else {
                 document.exitFullscreen();
             }
-        }
+        };
 
-        function takeScreenshot() {
+        window.takeScreenshot = function() {
             renderer.render(scene, camera);
             const link = document.createElement('a');
             link.download = 'bus-viewer-screenshot.png';
             link.href = renderer.domElement.toDataURL('image/png');
             link.click();
-        }
+        };
 
-        function showHelp() {
+        window.showHelp = function() {
             alert(
                 '3D Bus Viewer Help\n\n' +
                 'Controls:\n' +
@@ -758,7 +771,14 @@
                 '• Supports .obj, .glb, .gltf files\n' +
                 '• Files stay on your device (no upload)'
             );
-        }
+        };
+
+        window.setLighting = setLighting;
+        window.toggleWireframe = toggleWireframe;
+        window.toggleGrid = toggleGrid;
+        window.toggleAxes = toggleAxes;
+        window.setModelColor = setModelColor;
+        window.resetView = resetView;
 
         function showLoading(visible) {
             const overlay = document.getElementById('loading');
