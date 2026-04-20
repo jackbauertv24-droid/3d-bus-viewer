@@ -19,5 +19,20 @@ Thumbs.db
 *.temp
 *.log
 
-# Downloaded archives (if any)
+# Downloaded archives
 *.zip
+
+# Node modules (dev dependencies for puppeteer)
+node_modules/
+package.json
+package-lock.json
+
+# Search scripts (dev tools)
+search-*.js
+download-*.js
+
+# Error/debug files
+*.html (except index.html)
+sketchfab-*.html
+sketchfab-*.json
+free-*.json

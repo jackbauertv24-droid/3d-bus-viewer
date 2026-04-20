@@ -291,13 +291,26 @@
         <label for="model-select">Model:</label>
         <select id="model-select">
             <option value="">-- Select Model --</option>
-            <option value="models/3dbus/BUS.obj">Generic Bus (ajanhallinta)</option>
-            <option value="models/publictransport/Bus.obj">LowPoly Bus (quaternius)</option>
-            <option value="models/schoolbus/SchoolBus.obj">School Bus (quaternius)</option>
+            <optgroup label="Buses">
+                <option value="models/3dbus/BUS.obj">Generic Bus (ajanhallinta)</option>
+                <option value="models/publictransport/Bus.obj">LowPoly Bus (quaternius)</option>
+                <option value="models/schoolbus/SchoolBus.obj">School Bus (quaternius)</option>
+                <option value="models/lowpoly-vehicles/Bus.fbx">City Bus (Daniel Quevedo)</option>
+            </optgroup>
+            <optgroup label="Minibuses">
+                <option value="models/vehicle-assets/car-minibus-red.obj">Minibus Red (eracoon)</option>
+                <option value="models/vehicle-assets/car-minibus-blue.obj">Minibus Blue (eracoon)</option>
+                <option value="models/vehicle-assets/car-minibus-green.obj">Minibus Green (eracoon)</option>
+            </optgroup>
+            <optgroup label="Other Vehicles">
+                <option value="models/lowpoly-vehicles/Sedan.fbx">Sedan (Daniel Quevedo)</option>
+                <option value="models/lowpoly-vehicles/Pickup.fbx">Pickup (Daniel Quevedo)</option>
+                <option value="models/lowpoly-vehicles/Jeep.fbx">Jeep (Daniel Quevedo)</option>
+            </optgroup>
         </select>
 
         <div class="file-input-wrapper">
-            <input type="file" id="file-input" accept=".obj,.glb,.gltf">
+            <input type="file" id="file-input" accept=".obj,.glb,.gltf,.fbx">
             <button class="file-btn" onclick="document.getElementById('file-input').click()">📁 Load Local File</button>
         </div>
     </div>
@@ -385,6 +398,7 @@
         import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
         import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         let scene, camera, renderer, controls;
@@ -397,11 +411,19 @@
         const objLoader = new OBJLoader();
         const mtlLoader = new MTLLoader();
         const gltfLoader = new GLTFLoader();
+        const fbxLoader = new FBXLoader();
 
         const BUNDLED_MODELS = {
-            'models/3dbus/BUS.obj': { mtl: 'models/3dbus/BUS.mtl', name: 'Generic Bus' },
-            'models/publictransport/Bus.obj': { mtl: 'models/publictransport/Bus.mtl', name: 'LowPoly Bus' },
-            'models/schoolbus/SchoolBus.obj': { mtl: 'models/schoolbus/SchoolBus.mtl', name: 'School Bus' }
+            'models/3dbus/BUS.obj': { mtl: 'models/3dbus/BUS.mtl', name: 'Generic Bus (ajanhallinta)', type: 'obj' },
+            'models/publictransport/Bus.obj': { mtl: 'models/publictransport/Bus.mtl', name: 'LowPoly Bus (quaternius)', type: 'obj' },
+            'models/schoolbus/SchoolBus.obj': { mtl: 'models/schoolbus/SchoolBus.mtl', name: 'School Bus (quaternius)', type: 'obj' },
+            'models/vehicle-assets/car-minibus-red.obj': { mtl: 'models/vehicle-assets/car-minibus-red.mtl', name: 'Minibus Red (eracoon)', type: 'obj' },
+            'models/vehicle-assets/car-minibus-blue.obj': { mtl: 'models/vehicle-assets/car-minibus-blue.mtl', name: 'Minibus Blue (eracoon)', type: 'obj' },
+            'models/vehicle-assets/car-minibus-green.obj': { mtl: 'models/vehicle-assets/car-minibus-green.mtl', name: 'Minibus Green (eracoon)', type: 'obj' },
+            'models/lowpoly-vehicles/Bus.fbx': { mtl: null, name: 'LowPoly City Bus (Daniel Quevedo)', type: 'fbx' },
+            'models/lowpoly-vehicles/Sedan.fbx': { mtl: null, name: 'LowPoly Sedan (Daniel Quevedo)', type: 'fbx' },
+            'models/lowpoly-vehicles/Pickup.fbx': { mtl: null, name: 'LowPoly Pickup (Daniel Quevedo)', type: 'fbx' },
+            'models/lowpoly-vehicles/Jeep.fbx': { mtl: null, name: 'LowPoly Jeep (Daniel Quevedo)', type: 'fbx' }
         };
 
         function init() {
@@ -529,7 +551,17 @@
             showLoading(true);
             const modelInfo = BUNDLED_MODELS[path];
 
-            if (modelInfo && modelInfo.mtl) {
+            if (!modelInfo) {
+                showError('Model not found: ' + path);
+                showLoading(false);
+                return;
+            }
+
+            const type = modelInfo.type || 'obj';
+
+            if (type === 'fbx') {
+                loadFBX(path);
+            } else if (modelInfo.mtl) {
                 mtlLoader.load(modelInfo.mtl, (materials) => {
                     materials.preload();
                     objLoader.setMaterials(materials);
@@ -550,7 +582,17 @@
                 addModelToScene(obj);
                 showLoading(false);
             }, onProgress, (error) => {
-                showError('Failed to load model: ' + error.message);
+                showError('Failed to load OBJ: ' + error.message);
+                showLoading(false);
+            });
+        }
+
+        function loadFBX(path) {
+            fbxLoader.load(path, (fbx) => {
+                addModelToScene(fbx);
+                showLoading(false);
+            }, onProgress, (error) => {
+                showError('Failed to load FBX: ' + error.message);
                 showLoading(false);
             });
         }
@@ -587,8 +629,18 @@
                     URL.revokeObjectURL(url);
                     showLoading(false);
                 });
+            } else if (ext === 'fbx') {
+                fbxLoader.load(url, (fbx) => {
+                    addModelToScene(fbx);
+                    URL.revokeObjectURL(url);
+                    showLoading(false);
+                }, onProgress, (error) => {
+                    showError('Failed to load FBX: ' + error.message);
+                    URL.revokeObjectURL(url);
+                    showLoading(false);
+                });
             } else {
-                showError('Unsupported format. Use .obj, .glb, or .gltf');
+                showError('Unsupported format. Use .obj, .glb, .gltf, or .fbx');
                 showLoading(false);
             }
 
